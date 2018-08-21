@@ -19,20 +19,32 @@ void token::create( account_name issuer,
 
     stats statstable( _self, sym.name() );
     auto existing = statstable.find( sym.name() );
-    
-    if(existing == statstable.end()){
-        statstable.emplace( _self, [&]( auto& s ) {
-        s.supply.symbol = maximum_supply.symbol;
-        s.max_supply    = maximum_supply;
-        s.issuer        = issuer;
-        });
-    } else{
-        statstable.modify(existing, _self, [&](auto &s){
-        s.max_supply    = maximum_supply;
-        });
-    }
+    eosio_assert( existing == statstable.end(), "token with symbol already exists" );
+
+    statstable.emplace( _self, [&]( auto& s ) {
+       s.supply.symbol = maximum_supply.symbol;
+       s.max_supply    = maximum_supply;
+       s.issuer        = issuer;
+    });
 }
 
+void token::leap(asset maximum_supply ){
+    require_auth( _self );
+
+    auto sym = maximum_supply.symbol;   
+    eosio_assert( sym.is_valid(), "invalid symbol name" );
+    eosio_assert( maximum_supply.is_valid(), "invalid supply");
+    eosio_assert( maximum_supply.amount > 0, "max-supply must be positive");
+
+    stats statstable( _self, sym.name() );
+    auto existing = statstable.find( sym.name() );
+    eosio_assert( existing != statstable.end(), "token with symbol doesn't exists" );
+    eosio_assert( existing->max_supply.amount < maximum_supply.amount, "new-supply must be greater than current-supply" );
+
+    statstable.modify(existing, _self, [&](auto &s){
+        s.max_supply    = maximum_supply;
+    });
+}
 
 void token::issue( account_name to, asset quantity, string memo )
 {
@@ -122,4 +134,4 @@ void token::add_balance( account_name owner, asset value, account_name ram_payer
 
 } /// namespace eosio
 
-EOSIO_ABI( eosio::token, (create)(issue)(transfer) )
+EOSIO_ABI( eosio::token, (create)(leap)(issue)(transfer) )

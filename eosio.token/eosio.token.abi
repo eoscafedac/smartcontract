@@ -21,6 +21,12 @@
         {"name":"maximum_supply", "type":"asset"}
      ]
   },{
+     "name": "leap",
+     "base": "",
+     "fields": [
+        {"name":"maximum_supply", "type":"asset"}
+     ]
+  },{
      "name": "issue",
      "base": "",
      "fields": [
@@ -51,6 +57,10 @@
     },{
       "name": "issue",
       "type": "issue",
+      "ricardian_contract": ""
+    }, {
+      "name": "leap",
+      "type": "leap",
       "ricardian_contract": ""
     }, {
       "name": "create",

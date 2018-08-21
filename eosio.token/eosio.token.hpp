@@ -23,6 +23,7 @@ namespace eosio {
 
          void create( account_name issuer,
                       asset        maximum_supply);
+         void leap( asset maximum_supply );
 
          void issue( account_name to, asset quantity, string memo );
 
