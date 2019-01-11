@@ -178,7 +178,9 @@ void staking::refund(const account_name owner, account_name enterprise)
 
     auto etp = _enterprises.find(enterprise);
     // check again
-    auto reward_amount = continuous_rate * token_supply_amount  / seconds_per_year;
+    auto staked_duration = eosio::time_point_sec(now()).sec_since_epoch() - staker->start_at.sec_since_epoch();
+    auto reward_amount = continuous_rate * staker->stake_num * staked_duration / seconds_per_year;
+    
     _enterprises.modify(etp, _self, [&](auto &info) {
         info.total_stake -= staker->stake_num;
         info.total_unpaid += reward_amount;
