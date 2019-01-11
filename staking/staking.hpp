@@ -25,6 +25,7 @@ class staking : public eosio::contract
 
    void cupreceived(account_name account, account_name enterprise);
 
+   void refund( const account_name owner, account_name enterprise);
    struct transfer_args
    {
       account_name from;

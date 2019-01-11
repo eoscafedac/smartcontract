@@ -6,10 +6,10 @@
 #include "staking.hpp"
 #include <eosiolib/transaction.hpp>
 
-
 #define BEAN_TOKEN_CONTRACT N(thebeantoken)
 #define BEAN_SYMBOL S(4, BEAN)
 
+const int64_t token_supply_amount = 4'000'000'000'0000;
 const uint32_t seconds_per_year = 52 * 7 * 24 * 3600;
 const int64_t min_enterprise_stake = 10'000'0000;
 const double continuous_rate = 0.05; // 5% annual rate
@@ -102,9 +102,11 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
                     info.free_cup = offer->free_cup;
                 });
             }
-            eosio::transaction transfer;
-            transfer.actions.emplace_back(eosio::permission_level{_self, N(active)}, BEAN_TOKEN_CONTRACT, N(transfer), std::make_tuple(_self, transfer_data.from, transfer_data.quantity, std::string("Return staking token: eos.cafe")));
-            transfer.send(offer->duration_sec, _self, false);
+
+            auto etp = _enterprises.find(enterprise);
+            _enterprises.modify(etp, _self, [&](auto &info) {
+                info.total_stake += transfer_data.quantity.amount;
+            });
         }
     }
 }
@@ -165,6 +167,28 @@ void staking::claimrewards(account_name enterprise)
     transfer.send(0, _self, false);
 }
 
+void staking::refund(const account_name owner, account_name enterprise)
+{
+    require_auth(owner);
+    eosio_assert(is_enterprise_approved(enterprise), "enterprise not found");
+
+    staker_infos stake_table(_self, enterprise);
+    auto staker = stake_table.find(owner);
+    eosio_assert(staker != stake_table.end(), "refund request not found");
+
+    auto etp = _enterprises.find(enterprise);
+    // check again
+    auto reward_amount = continuous_rate * token_supply_amount  / seconds_per_year;
+    _enterprises.modify(etp, _self, [&](auto &info) {
+        info.total_stake -= staker->stake_num;
+        info.total_unpaid += reward_amount;
+    });
+    stake_table.erase(staker);
+    auto reward_token = eosio::asset(etp->total_unpaid, BEAN_SYMBOL);
+    eosio::transaction transfer;
+    transfer.actions.emplace_back(eosio::permission_level{_self, N(active)}, BEAN_TOKEN_CONTRACT, N(transfer), std::make_tuple(_self, owner, reward_token, std::string("Refund staking token: eos.cafe")));
+    transfer.send(0, _self, false);
+}
 bool staking::is_enterprise(account_name account)
 {
     auto etp = _enterprises.find(account);
