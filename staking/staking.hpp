@@ -21,7 +21,7 @@ class staking : public eosio::contract
 
    void regetp(account_name enterprise, std::string name, std::string &url, uint16_t location);
 
-   void claim(account_name account);
+   void claimrewards(account_name enterprise);
 
    void cupreceived(account_name account, account_name enterprise);
 
@@ -57,31 +57,20 @@ class staking : public eosio::contract
 
    // was stored by enterprise
 
-   struct stake_info
+   struct staker_info
    {
-      uint64_t id;
       account_name staker;
       uint64_t stake_num = 0;
       eosio::time_point_sec start_at;
       eosio::time_point_sec end_at;
-
-      uint64_t primary_key() const { return id; }
-      uint64_t by_staker() const { return staker; }
-
-      EOSLIB_SERIALIZE(stake_info, (id)(staker)(stake_num)(start_at)(end_at))
-   };
-   typedef eosio::multi_index<N(stake_infos), stake_info> stake_infos;
-
-   // was stored by enterprise
-   struct user_info
-   {
-      account_name user;
-      uint64_t free_cup;
       eosio::time_point_sec updated_at;
-      uint64_t primary_key() const { return user; }
-      EOSLIB_SERIALIZE(user_info, (user)(free_cup)(updated_at))
+      uint64_t free_cup;
+
+      uint64_t primary_key() const { return staker; }
+
+      EOSLIB_SERIALIZE(staker_info, (staker)(stake_num)(start_at)(end_at)(updated_at)(free_cup))
    };
-   typedef eosio::multi_index<N(user_infos), user_info> user_infos;
+   typedef eosio::multi_index<N(staker_infos), staker_info> staker_infos;
 
    struct etp_offer
    {
