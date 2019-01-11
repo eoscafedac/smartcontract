@@ -87,9 +87,6 @@ class staking : public eosio::contract
    };
    typedef eosio::multi_index<N(etp_offers), etp_offer> etp_offers_table;
 
-   bool is_enterprise(account_name account);
-   bool is_enterprise_approved(account_name enterprise);
-
    enterprises_table _enterprises;
    etp_offers_table _etp_offer;
 };
