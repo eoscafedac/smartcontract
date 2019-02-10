@@ -162,8 +162,14 @@ void staking::docoupon(account_name enterprise, account_name account)
 
 void staking::claimrewards(account_name enterprise)
 {
+    require_auth(enterprise);
+
     auto etp = _enterprises.find(enterprise);
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve), "enterprise doesn't exist");
+
+    _enterprises.modify(etp, _self, [&](auto &info) {
+        info.total_unpaid = eosio::asset(0, BEAN_SYMBOL);
+    });
 
     eosio::transaction transfer;
     transfer.actions.emplace_back(eosio::permission_level{_self, N(active)}, BEAN_TOKEN_CONTRACT, N(transfer), std::make_tuple(_self, enterprise, etp->total_unpaid, std::string("Staking Reward from eos.cafe")));

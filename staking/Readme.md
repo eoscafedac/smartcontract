@@ -30,6 +30,13 @@ memory:
  quota:      1021 KiB    used:     347.3 KiB
 ````
 
+##### eosio.code permission, remember change publickey
+
+
+````bash
+
+$ cleos -u http://jungle2.cryptolions.io:80 set account permission etpcontract1 active '{"threshold": 1,"keys": [{"key": "EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF","weight": 1}],"accounts": [{"permission":{"actor":"etpcontract1","permission":"eosio.code"},"weight":1}]}' owner -p etpcontract1
+
 ##### Register Enterprice
 
 ````bash
@@ -212,5 +219,90 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract1 etpcontract1 
   "more": false
 }
 
+
+````
+
+````
+
+##### Get refund:
+
+````bash
+$ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe accounts
+{
+  "rows": [{
+      "balance": "975208.5310 BEAN"
+    }
+  ],
+  "more": false
+}
+
+$ cleos -u http://jungle2.cryptolions.io:80  push action etpcontract1  refund '["wantfreecafe", 3]' -p wantfreecafe
+
+$ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe accounts
+{
+  "rows": [{
+      "balance": "987553.5310 BEAN"
+    }
+  ],
+  "more": false
+}
+
+$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract1 etpcontract1 stakerinfos
+{
+  "rows": [{{
+      "id": 3,
+      "staker": "wantfreecafe",
+      "enterprise": "enterprice12",
+      "stake_num": "12345.0000 BEAN",
+      "coupon": "3.0000 MOON",
+      "start_at": "2019-02-10T16:56:42",
+      "end_at": "2019-02-10T16:56:47",
+      "updated_at": "2019-02-10T16:56:42",
+      "is_done": 1
+    }
+  ],
+  "more": false
+}
+
+````
+
+##### Claim reward:
+
+````bash
+$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract1 etpcontract1 enterprises
+{
+  "rows": [{
+      "owner": "enterprice12",
+      "name": "Cafe In The Moon",
+      "url": "moon.cafe",
+      "location": 123,
+      "coupon_name": 1313820493,
+      "total_stake": "10012346.2345 BEAN",
+      "total_unpaid": "41.3583 BEAN",
+      "last_claim_time": "2019-02-10T17:04:49",
+      "is_approve": 1
+    }
+  ],
+  "more": false
+}
+
+$ cleos -u http://jungle2.cryptolions.io:80  push action etpcontract1  claimrewards '["enterprice12"]' -p enterprice12
+
+$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract1 etpcontract1 enterprises
+{
+  "rows": [{
+      "owner": "enterprice12",
+      "name": "Cafe In The Moon",
+      "url": "moon.cafe",
+      "location": 123,
+      "coupon_name": 1313820493,
+      "total_stake": "10012346.2345 BEAN",
+      "total_unpaid": "0.0000 BEAN",
+      "last_claim_time": "2019-02-10T17:04:49",
+      "is_approve": 1
+    }
+  ],
+  "more": false
+}
 
 ````
