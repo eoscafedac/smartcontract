@@ -221,9 +221,6 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract1 etpcontract1 
 
 
 ````
-
-````
-
 ##### Get refund:
 
 ````bash
