@@ -37,6 +37,8 @@ memory:
 
 $ cleos -u http://jungle2.cryptolions.io:80 set account permission etpcontract4 active '{"threshold": 1,"keys": [{"key": "EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF","weight": 1}],"accounts": [{"permission":{"actor":"etpcontract4","permission":"eosio.code"},"weight":1}]}' owner -p etpcontract4
 
+````
+
 ##### Register Enterprice: 
 
 ````bash
