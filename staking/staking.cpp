@@ -12,6 +12,7 @@
 const uint64_t token_supply_amount = 4'000'000'000'0000;
 const uint32_t seconds_per_year = 52 * 7 * 24 * 3600;
 const uint64_t min_enterprise_stake = 10'000'000'0000;
+
 const double continuous_rate = 0.05; // 5% annual rate
 
 staking::staking(account_name _self)
@@ -25,9 +26,6 @@ staking::staking(account_name _self)
 // to stake send amount of bean token with message is account "enterprise"
 void staking::transfer(uint64_t sender, uint64_t receiver)
 {
-    print("\n>>> sender >>>", sender, " - name: ", eosio::name{sender});
-    print("\n>>> receiver >>>", receiver, " - name: ", eosio::name{receiver});
-
     auto transfer_data = eosio::unpack_action_data<transfer_args>();
     if (transfer_data.from == _self || transfer_data.to != _self)
     {
@@ -45,12 +43,16 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
 
     if (transfer_data.from == enterprise)
     {
-        // enterprise is stake to itself
+        // deposit
+        auto total_deposit = etp->deposit + transfer_data.quantity;
+        bool approve = total_deposit.amount >= min_enterprise_stake ? true : false;
+        // calculate last staked deposit
+        auto staked_duration = eosio::time_point_sec(now()).sec_since_epoch() - etp->last_claim_time.sec_since_epoch();
+        uint64_t reward_amount = continuous_rate * etp->deposit.amount * staked_duration / seconds_per_year;
 
-        auto total_staked = etp->total_stake.amount + transfer_data.quantity.amount;
-        bool approve = total_staked >= min_enterprise_stake ? true : false;
         _enterprises.modify(etp, _self, [&](auto &info) {
-            info.total_stake = eosio::asset(total_staked, BEAN_SYMBOL);
+            info.deposit = total_deposit;
+            info.total_unpaid += eosio::asset(reward_amount, BEAN_SYMBOL);
             info.is_approve = approve;
             info.last_claim_time = eosio::time_point_sec(now());
         });
@@ -62,17 +64,19 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
 
         auto offer = _etp_offer.find(enterprise);
         eosio_assert((offer != _etp_offer.end()) && (offer->is_active == true), "no offer from this enterprise");
-        eosio_assert((offer->min_stake <= transfer_data.quantity.amount) && (offer->max_stake >= transfer_data.quantity.amount), "your tranfered amount doesn't match with enterprise offered amount");
+        eosio_assert((offer->min_stake <= transfer_data.quantity) && (offer->max_stake >= transfer_data.quantity), "your tranfered amount doesn't match with enterprise offered amount");
+
+        uint64_t reward_etp = continuous_rate * transfer_data.quantity.amount * offer->duration_sec / seconds_per_year;
 
         _staker_infos.emplace(_self, [&](auto &info) {
             info.id = _staker_infos.available_primary_key();
             info.staker = transfer_data.from;
             info.enterprise = enterprise;
             info.stake_num = transfer_data.quantity;
+            info.reward_etp = eosio::asset(reward_etp, BEAN_SYMBOL);
             info.coupon = offer->coupon_quantity;
             info.start_at = eosio::time_point_sec(now());
             info.end_at = eosio::time_point_sec(now()) + offer->duration_sec;
-            info.updated_at = eosio::time_point_sec(now());
             info.is_done = false;
         });
         _enterprises.modify(etp, _self, [&](auto &info) {
@@ -95,7 +99,7 @@ void staking::regetp(account_name enterprise, std::string name, std::string url,
             info.name = name;
             info.url = url;
             info.location = location;
-            info.coupon_name = eosio::symbol_type(coupon.symbol).name();
+            info.coupon_name =  eosio::asset(0, coupon.symbol);
         });
     }
     else
@@ -106,14 +110,13 @@ void staking::regetp(account_name enterprise, std::string name, std::string url,
             info.is_approve = false;
             info.url = url;
             info.location = location;
-            info.coupon_name = eosio::symbol_type(coupon.symbol).name();
-            info.total_unpaid = eosio::asset(0, BEAN_SYMBOL);
+            info.coupon_name = eosio::asset(0, coupon.symbol);
             info.last_claim_time = eosio::time_point_sec(now());
         });
     }
 }
 
-void staking::setoffer(account_name owner, std::string offer_head, std::string offer_details, uint64_t min_stake, uint64_t max_stake, uint64_t duration_sec, eosio::asset coupon_quantity, bool is_active)
+void staking::setoffer(account_name owner, std::string offer_head, std::string offer_details, eosio::asset min_stake, eosio::asset max_stake, uint64_t duration_sec, eosio::asset coupon_quantity, bool is_active)
 {
     require_auth(owner);
     auto etp = _enterprises.find(owner);
@@ -121,7 +124,7 @@ void staking::setoffer(account_name owner, std::string offer_head, std::string o
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve == true), "enterprise does not exist");
     eosio_assert(offer_head.size() < 128, "header is too long");
     eosio_assert(min_stake <= max_stake, "min stake should be smaller than max stake");
-    eosio_assert(etp->coupon_name == eosio::symbol_type(coupon_quantity.symbol).name(), "symbol mismatch");
+    eosio_assert(etp->coupon_name.symbol == coupon_quantity.symbol, "symbol mismatch");
 
     auto offer = _etp_offer.find(owner);
 
@@ -167,13 +170,21 @@ void staking::claimrewards(account_name enterprise)
     auto etp = _enterprises.find(enterprise);
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve), "enterprise doesn't exist");
 
+    auto staked_duration = eosio::time_point_sec(now()).sec_since_epoch() - etp->last_claim_time.sec_since_epoch();
+    uint64_t deposit_reward = continuous_rate * etp->deposit.amount * staked_duration / seconds_per_year;
+
+    auto total_unpaid_reward = etp->total_unpaid + eosio::asset(deposit_reward, BEAN_SYMBOL);
+    
     _enterprises.modify(etp, _self, [&](auto &info) {
         info.total_unpaid = eosio::asset(0, BEAN_SYMBOL);
+        info.last_claim_time = eosio::time_point_sec(now());
     });
 
-    eosio::transaction transfer;
-    transfer.actions.emplace_back(eosio::permission_level{_self, N(active)}, BEAN_TOKEN_CONTRACT, N(transfer), std::make_tuple(_self, enterprise, etp->total_unpaid, std::string("Staking Reward from eos.cafe")));
-    transfer.send(1, _self, false);
+    eosio::action(
+        eosio::permission_level{_self, N(active)},
+        BEAN_TOKEN_CONTRACT, N(transfer),
+        std::make_tuple(_self, enterprise, total_unpaid_reward, std::string("Staking Reward For Enterprice from eos.cafe")))
+        .send();
 }
 
 void staking::refund(account_name staker, uint64_t staker_id)
@@ -182,29 +193,26 @@ void staking::refund(account_name staker, uint64_t staker_id)
 
     auto stake_info = _staker_infos.find(staker_id);
     eosio_assert(stake_info != _staker_infos.end(), "stake id does not exist");
-    eosio_assert(stake_info->end_at <= eosio::time_point_sec(now()), "Stake is still in offer duration");
-    eosio_assert(stake_info->is_done == false, "Stake id already claim back");
+    eosio_assert(stake_info->end_at <= eosio::time_point_sec(now()), "your stake is still in offer's duration");
+    eosio_assert(stake_info->is_done == false, "stake id already claim back");
 
     auto etp = _enterprises.find(stake_info->enterprise);
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve == true), "enterprise does not exist");
 
-    auto staked_duration = eosio::time_point_sec(now()).sec_since_epoch() - etp->last_claim_time.sec_since_epoch();
-    // take care with this, the formulate will be changed later to get exactly staked reward
-    uint64_t reward_amount = continuous_rate * etp->total_stake.amount * staked_duration / seconds_per_year;
-
     _enterprises.modify(etp, _self, [&](auto &info) {
         info.total_stake -= stake_info->stake_num;
-        info.total_unpaid += eosio::asset(reward_amount, BEAN_SYMBOL);
-        info.last_claim_time = eosio::time_point_sec(now());
+        info.total_unpaid += stake_info->reward_etp;
     });
 
     _staker_infos.modify(stake_info, _self, [&](auto &info) {
         info.is_done = true;
     });
 
-    eosio::transaction transfer;
-    transfer.actions.emplace_back(eosio::permission_level{_self, N(active)}, BEAN_TOKEN_CONTRACT, N(transfer), std::make_tuple(_self, staker, stake_info->stake_num, std::string("Refund staking token from eos.cafe")));
-    transfer.send(1, _self, false);
+    eosio::action(
+        eosio::permission_level{_self, N(active)},
+        BEAN_TOKEN_CONTRACT, N(transfer),
+        std::make_tuple(_self, staker, stake_info->stake_num, std::string("Refund staked token from eos.cafe")))
+        .send();
 }
 
 #define EOSIO_ABI_EX(TYPE, MEMBERS)                                                                             \

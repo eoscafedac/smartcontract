@@ -13,6 +13,7 @@
 using namespace std;
 
 #define BEAN_SYMBOL S(4, BEAN)
+#define NOTHING_SYMBOL S(4, NA)
 
 class staking : public eosio::contract
 {
@@ -23,7 +24,7 @@ class staking : public eosio::contract
  // @abi action
    void regetp(account_name enterprise, std::string name, std::string url, uint16_t location, eosio::asset coupon);
  // @abi action
-   void setoffer(account_name owner, std::string offer_head, std::string offer_details, uint64_t min_stake, uint64_t max_stake, uint64_t duration_sec, eosio::asset coupon_quantity, bool is_active);
+   void setoffer(account_name owner, std::string offer_head, std::string offer_details, eosio::asset min_stake, eosio::asset max_stake, uint64_t duration_sec, eosio::asset coupon_quantity, bool is_active);
  // @abi action
    void claimrewards(account_name enterprise);
  // @abi action
@@ -48,7 +49,8 @@ class staking : public eosio::contract
       std::string name;
       std::string url;
       uint16_t location = 0;
-      eosio::symbol_name coupon_name;
+      eosio::asset coupon_name;
+      eosio::asset deposit = eosio::asset(0, BEAN_SYMBOL);
       eosio::asset total_stake = eosio::asset(0, BEAN_SYMBOL);
       eosio::asset total_unpaid = eosio::asset(0, BEAN_SYMBOL);
       eosio::time_point_sec last_claim_time;
@@ -57,7 +59,7 @@ class staking : public eosio::contract
       uint64_t primary_key() const { return owner; }
 
       // explicit serialization macro is not necessary, used here only to improve compilation time
-      EOSLIB_SERIALIZE(enterprise, (owner)(name)(url)(location)(coupon_name)(total_stake)(total_unpaid)(last_claim_time)(is_approve))
+      EOSLIB_SERIALIZE(enterprise, (owner)(name)(url)(location)(coupon_name)(deposit)(total_stake)(total_unpaid)(last_claim_time)(is_approve))
    };
    typedef eosio::multi_index<N(enterprises), enterprise> enterprises_table;
 
@@ -68,17 +70,17 @@ class staking : public eosio::contract
       account_name staker;
       account_name enterprise;
       eosio::asset stake_num = eosio::asset(0, BEAN_SYMBOL);
-      eosio::asset coupon;
+      eosio::asset reward_etp = eosio::asset(0, BEAN_SYMBOL);
+      eosio::asset coupon = eosio::asset(0, NOTHING_SYMBOL);
       eosio::time_point_sec start_at;
       eosio::time_point_sec end_at;
-      eosio::time_point_sec updated_at;
       bool is_done;
 
       uint64_t primary_key() const { return id; }
       uint64_t by_staker() const { return staker; }
       uint64_t by_enterprise() const { return enterprise; }
 
-      EOSLIB_SERIALIZE(staker_info, (id)(staker)(enterprise)(stake_num)(coupon)(start_at)(end_at)(updated_at)(is_done))
+      EOSLIB_SERIALIZE(staker_info, (id)(staker)(enterprise)(stake_num)(reward_etp)(coupon)(start_at)(end_at)(is_done))
    };
 
    typedef eosio::multi_index<N(stakerinfos), staker_info,
@@ -92,8 +94,8 @@ class staking : public eosio::contract
       bool is_active = false;
       std::string offer_head;
       std::string offer_details;
-      uint64_t min_stake = 0;
-      uint64_t max_stake = 0;
+      eosio::asset min_stake = eosio::asset(0, BEAN_SYMBOL);
+      eosio::asset max_stake = eosio::asset(0, BEAN_SYMBOL);
       uint64_t duration_sec = 0;
       eosio::asset coupon_quantity;
 
