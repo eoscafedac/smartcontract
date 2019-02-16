@@ -218,8 +218,11 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
   "more": false
 
 ````
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 0ba296885e8cf23b241efd6354ad2df7d85757a1
 ##### Get refund:
 
 ````bash
