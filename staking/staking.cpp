@@ -11,7 +11,9 @@
 
 const uint64_t token_supply_amount = 4'000'000'000'0000;
 const uint32_t seconds_per_year = 52 * 7 * 24 * 3600;
-const uint64_t min_enterprise_stake = 10'000'000'0000;
+const uint64_t min_enterprise_stake = 1'000'000'0000;
+#define GLOBAL_ID_ACTIVE 101
+#define GLOBAL_ID_MIN_ETP_STAKE 102
 
 const double continuous_rate = 0.05; // 5% annual rate
 
@@ -19,7 +21,8 @@ staking::staking(account_name _self)
     : eosio::contract(_self),
       _enterprises(_self, _self),
       _etp_offer(_self, _self),
-      _staker_infos(_self, _self)
+      _staker_infos(_self, _self),
+      _globals(_self, _self)
 {
 }
 
@@ -43,9 +46,15 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
 
     if (transfer_data.from == enterprise)
     {
+        auto active_pos = _globals.find(GLOBAL_ID_ACTIVE);
+        eosio_assert(active_pos != _globals.end() && active_pos->val, "Maintaining ...");
+
+        auto main_stake_itr = _globals.find(GLOBAL_ID_MIN_ETP_STAKE);
+        eosio_assert(main_stake_itr != _globals.end(), "global id does not exist");
+
         // deposit
         auto total_deposit = etp->deposit + transfer_data.quantity;
-        bool approve = total_deposit.amount >= min_enterprise_stake ? true : false;
+        bool approve = total_deposit.amount >= main_stake_itr->val ? true : false;
         // calculate last staked deposit
         auto staked_duration = eosio::time_point_sec(now()).sec_since_epoch() - etp->last_claim_time.sec_since_epoch();
         uint64_t reward_amount = continuous_rate * etp->deposit.amount * staked_duration / seconds_per_year;
@@ -59,6 +68,9 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
     }
     else
     {
+        auto active_pos = _globals.find(GLOBAL_ID_ACTIVE);
+        eosio_assert(active_pos != _globals.end() && active_pos->val, "Maintaining ...");
+
         // user stake for enterprise
         eosio_assert(etp->is_approve, "enterprise doesn't meet requirement");
 
@@ -77,10 +89,44 @@ void staking::transfer(uint64_t sender, uint64_t receiver)
             info.coupon = offer->coupon_quantity;
             info.start_at = eosio::time_point_sec(now());
             info.end_at = eosio::time_point_sec(now()) + offer->duration_sec;
-            info.is_done = false;
+            info.status = STAKING;
         });
         _enterprises.modify(etp, _self, [&](auto &info) {
             info.total_stake += transfer_data.quantity;
+        });
+    }
+}
+
+void staking::initialize()
+{
+    require_auth(_self);
+
+    _globals.emplace(_self, [&](auto &a) {
+        a.id = GLOBAL_ID_ACTIVE;
+        a.val = 1;
+    });
+
+    _globals.emplace(_self, [&](auto &a) {
+        a.id = GLOBAL_ID_MIN_ETP_STAKE;
+        a.val = min_enterprise_stake;
+    });
+}
+
+void staking::setglobal(uint64_t id, uint64_t val)
+{
+    require_auth(_self);
+    auto pos = _globals.find(id);
+    if (pos == _globals.end())
+    {
+        _globals.emplace(_self, [&](auto &info) {
+            info.id = id;
+            info.val = val;
+        });
+    }
+    else
+    {
+        _globals.modify(pos, 0, [&](auto &info) {
+            info.val = val;
         });
     }
 }
@@ -99,7 +145,7 @@ void staking::regetp(account_name enterprise, std::string name, std::string url,
             info.name = name;
             info.url = url;
             info.location = location;
-            info.coupon_name =  eosio::asset(0, coupon.symbol);
+            info.coupon_name = eosio::asset(0, coupon.symbol);
         });
     }
     else
@@ -155,12 +201,17 @@ void staking::setoffer(account_name owner, std::string offer_head, std::string o
 }
 
 // confirm received free cafe from shop
-void staking::docoupon(account_name enterprise, account_name account)
+void staking::docoupon(account_name enterprise, uint64_t staker_id)
 {
     require_auth(enterprise);
 
-    eosio_assert(false, "This action will be actived soon");
-    // remove stake id once it've done
+    auto stake_info = _staker_infos.find(staker_id);
+    eosio_assert(stake_info != _staker_infos.end(), "stake id does not exist");
+    eosio_assert(stake_info->status == REFUND, "stake id out of REFUND state");
+    eosio_assert(stake_info->enterprise == enterprise, "incorrect enterprise");
+    _staker_infos.modify(stake_info, _self, [&](auto &info) {
+        info.status = DONE;
+    });
 }
 
 void staking::claimrewards(account_name enterprise)
@@ -174,7 +225,7 @@ void staking::claimrewards(account_name enterprise)
     uint64_t deposit_reward = continuous_rate * etp->deposit.amount * staked_duration / seconds_per_year;
 
     auto total_unpaid_reward = etp->total_unpaid + eosio::asset(deposit_reward, BEAN_SYMBOL);
-    
+
     _enterprises.modify(etp, _self, [&](auto &info) {
         info.total_unpaid = eosio::asset(0, BEAN_SYMBOL);
         info.last_claim_time = eosio::time_point_sec(now());
@@ -194,7 +245,7 @@ void staking::refund(account_name staker, uint64_t staker_id)
     auto stake_info = _staker_infos.find(staker_id);
     eosio_assert(stake_info != _staker_infos.end(), "stake id does not exist");
     eosio_assert(stake_info->end_at <= eosio::time_point_sec(now()), "your stake is still in offer's duration");
-    eosio_assert(stake_info->is_done == false, "stake id already claim back");
+    eosio_assert(stake_info->status == STAKING, "stake id out of STAKING state");
 
     auto etp = _enterprises.find(stake_info->enterprise);
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve == true), "enterprise does not exist");
@@ -205,7 +256,7 @@ void staking::refund(account_name staker, uint64_t staker_id)
     });
 
     _staker_infos.modify(stake_info, _self, [&](auto &info) {
-        info.is_done = true;
+        info.status = REFUND;
     });
 
     eosio::action(
@@ -237,4 +288,4 @@ void staking::refund(account_name staker, uint64_t staker_id)
         }                                                                                                       \
     }
 
-EOSIO_ABI_EX(staking, (transfer)(regetp)(setoffer)(docoupon)(claimrewards)(refund))
+EOSIO_ABI_EX(staking, (transfer)(initialize)(setglobal)(regetp)(setoffer)(docoupon)(claimrewards)(refund))

@@ -7,24 +7,24 @@ STAKING CONTRACT
 
 * Please use following accounts to test
 
-etpcontract4 -  EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF
+guacamolenom -  EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF
 thebeantoken - EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF
 
 * Endpoint network:
 
-http://jungle2.cryptolions.io:80
+https://api.eosdetroit.io:443
 
-* Contract name: etpcontract4
+* Contract name: guacamolenom
 
 
-##### Set contract to etpcontract4 account
+##### Set contract to guacamolenom account
 ````bash
-$ cleos -u http://jungle2.cryptolions.io:80 set contract etpcontract4 ./staking/ -p etpcontract4
+$ cleos -u https://api.eosdetroit.io:443 set contract guacamolenom ./staking/ -p guacamolenom
 ````
 
 ##### Check contract ram
 ````bash
-cleos -u http://jungle2.cryptolions.io:80 get account etpcontract4
+cleos -u https://api.eosdetroit.io:443 get account guacamolenom
 ...
 memory: 
   quota:      1010 KiB    used:     338.2 KiB
@@ -35,18 +35,46 @@ memory:
 
 ````bash
 
-$ cleos -u http://jungle2.cryptolions.io:80 set account permission etpcontract4 active '{"threshold": 1,"keys": [{"key": "EOS5ZwsT4k5szwhgbxyoWa5D2tHYAPxEwQKrHxWtU3xnPeJkudLfF","weight": 1}],"accounts": [{"permission":{"actor":"etpcontract4","permission":"eosio.code"},"weight":1}]}' owner -p etpcontract4
+$ cleos -u https://api.eosdetroit.io:443 set account permission guacamolenom active '{"threshold": 1,"keys": [{"key": "EOS6JcSNG8VSMgCkiPLLhuMsbNwX3q4xxfDd5CS49eTMUyeFmCgAd","weight": 1}],"accounts": [{"permission":{"actor":"guacamolenom","permission":"eosio.code"},"weight":1}]}' owner -p guacamolenom
+
+````
+
+##### initilize
+
+
+````bash
+
+#define GLOBAL_ID_ACTIVE 101
+#define GLOBAL_ID_MIN_ETP_STAKE 102
+
+$ cleos -u https://api.eosdetroit.io:443  push action guacamolenom initialize '[""]' -p guacamolenom
+
+#set min enterprice stake = 100'000 BEAN = 100'000.0000
+$ cleos -u https://api.eosdetroit.io:443  push action guacamolenom setglobal '[102, 1000000000]' -p guacamolenom
+
+$ cleos -u https://api.eosdetroit.io:443  get table guacamolenom guacamolenom globals
+{
+  "rows": [{
+      "id": 101,
+      "val": 1
+    },{
+      "id": 102,
+      "val": "10000000000"
+    }
+  ],
+  "more": false
+}
 
 ````
 
 ##### Register Enterprice: 
 
 ````bash
-$ $ cleos -u http://jungle2.cryptolions.io:80 push action etpcontract4 regetp '["enterprice12", "Cafe In The Moon", "moon.cafe", 123, "0.0000 MOON"]' -p enterprice12
+$ $ cleos -u https://api.eosdetroit.io:443 push action guacamolenom regetp '["enterprice12", "Cafe In The Moon", "moon.cafe", 123, "0.0000 MOON"]' -p enterprice12
 
-$ cleos -u http://jungle2.cryptolions.io:80 push action etpcontract4 regetp '["notokenfree1", "Get discount from abcdef", "abcdef.cafe", 213, "0.00 DIS"]' -p notokenfree1
+$ cleos -u https://api.eosdetroit.io:443 push action guacamolenom regetp '["notokenfree1", "Get discount from abcdef", "abcdef.cafe", 213, "0.00 DIS"]' -p notokenfree1
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 enterprises
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom enterprises
 {
   "rows": [{
       "owner": "enterprice12",
@@ -83,11 +111,11 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 ````bash
 
 
-$ cleos -u http://jungle2.cryptolions.io:80 push action thebeantoken transfer '["notokenfree1", "etpcontract4", "10000001.0000 BEAN", "notokenfree1"]' -p notokenfree1
+$ cleos -u https://api.eosdetroit.io:443 push action thebeantoken transfer '["notokenfree1", "guacamolenom", "10000001.0000 BEAN", "notokenfree1"]' -p notokenfree1
 
-$ cleos -u http://jungle2.cryptolions.io:80 push action thebeantoken transfer '["enterprice12", "etpcontract4", "3000000.0000 BEAN", "enterprice12"]' -p enterprice12
+$ cleos -u https://api.eosdetroit.io:443 push action thebeantoken transfer '["enterprice12", "guacamolenom", "3000000.0000 BEAN", "enterprice12"]' -p enterprice12
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 enterprises
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom enterprises
 {
   "rows": [{
       "owner": "enterprice12",
@@ -117,9 +145,9 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 }
 
 // onely aprrove after deposit 10.000.000 BEAN
-$ cleos -u http://jungle2.cryptolions.io:80 push action thebeantoken transfer '["enterprice12", "etpcontract4", "2000000.0000 BEAN", "enterprice12"]' -p enterprice12
+$ cleos -u https://api.eosdetroit.io:443 push action thebeantoken transfer '["enterprice12", "guacamolenom", "2000000.0000 BEAN", "enterprice12"]' -p enterprice12
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 enterprises
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom enterprises
 {
   "rows": [{
       "owner": "enterprice12",
@@ -153,11 +181,11 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 
 ##### enterprice set offer
 ````bash
-$ cleos -u http://jungle2.cryptolions.io:80 push action etpcontract4 setoffer '["enterprice12", "Get 3 Free Cafe in Moon", "All detials offer here", "12345.0000 BEAN", "12345.0000 BEAN", 300, "3.0000 MOON", true]' -p enterprice12
+$ cleos -u https://api.eosdetroit.io:443 push action guacamolenom setoffer '["enterprice12", "Get 3 Free Cafe in Moon", "All detials offer here", "12345.0000 BEAN", "12345.0000 BEAN", 300, "3.0000 MOON", true]' -p enterprice12
 
-$ cleos -u http://jungle2.cryptolions.io:80 push action etpcontract4 setoffer '["notokenfree1", "Create Video to get Discount", "All detail offer in here", "10000.0000 BEAN", "100000.0000 BEAN", 1000, "0.75 DIS", true]' -p notokenfree1
+$ cleos -u https://api.eosdetroit.io:443 push action guacamolenom setoffer '["notokenfree1", "Create Video to get Discount", "All detail offer in here", "10000.0000 BEAN", "100000.0000 BEAN", 1000, "0.75 DIS", true]' -p notokenfree1
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 etpoffers
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom etpoffers
 {
   "rows": [{
       "owner": "enterprice12",
@@ -190,10 +218,10 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 
 ````bash
 
-$ cleos -u http://jungle2.cryptolions.io:80  push action thebeantoken transfer '["wantfreecafe", "etpcontract4", "12345.0000 BEAN", "enterprice12"]' -p wantfreecafe
-$ cleos -u http://jungle2.cryptolions.io:80  push action thebeantoken transfer '["getdiscount1", "etpcontract4", "500000.0000 BEAN", "notokenfree1"]' -p getdiscount1
+$ cleos -u https://api.eosdetroit.io:443  push action thebeantoken transfer '["wantfreecafe", "guacamolenom", "12345.0000 BEAN", "enterprice12"]' -p wantfreecafe
+$ cleos -u https://api.eosdetroit.io:443  push action thebeantoken transfer '["getdiscount1", "guacamolenom", "500000.0000 BEAN", "notokenfree1"]' -p getdiscount1
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 stakerinfos
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom stakerinfos
 {
   "rows": [{
       "id": 2,
@@ -224,7 +252,7 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 ##### Get refund:
 
 ````bash
-$ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe accounts
+$ cleos -u https://api.eosdetroit.io:443 get table thebeantoken wantfreecafe accounts
 {
   "rows": [{
       "balance": "950518.5310 BEAN"
@@ -233,9 +261,9 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe 
   "more": false
 }
 
-$ cleos -u http://jungle2.cryptolions.io:80  push action etpcontract4  refund '["wantfreecafe", 2]' -p wantfreecafe
+$ cleos -u https://api.eosdetroit.io:443  push action guacamolenom  refund '["wantfreecafe", 2]' -p wantfreecafe
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe accounts
+$ cleos -u https://api.eosdetroit.io:443 get table thebeantoken wantfreecafe accounts
 {
   "rows": [{
       "balance": "962863.5310 BEAN"
@@ -244,7 +272,7 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table thebeantoken wantfreecafe 
   "more": false
 }
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 stakerinfos
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom stakerinfos
 {
   "rows": [{
       "id": 2,
@@ -266,7 +294,7 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
 ##### Claim reward:
 
 ````bash
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 enterprises
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom enterprises
 {
   "rows": [{
       "owner": "enterprice12",
@@ -284,9 +312,9 @@ $ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 
   "more": false
 }
 
-$ cleos -u http://jungle2.cryptolions.io:80  push action etpcontract4  claimrewards '["enterprice12"]' -p enterprice12
+$ cleos -u https://api.eosdetroit.io:443  push action guacamolenom  claimrewards '["enterprice12"]' -p enterprice12
 
-$ cleos -u http://jungle2.cryptolions.io:80 get table etpcontract4 etpcontract4 enterprises
+$ cleos -u https://api.eosdetroit.io:443 get table guacamolenom guacamolenom enterprises
 {
   "rows": [{
       "owner": "enterprice12",

@@ -28,9 +28,13 @@ class staking : public eosio::contract
  // @abi action
    void claimrewards(account_name enterprise);
  // @abi action
-   void docoupon(account_name account, account_name enterprise);
+   void docoupon(account_name account, uint64_t staker_id);
  // @abi action
    void refund(account_name staker, uint64_t staker_id);
+    // @abi action
+  void initialize();
+ // @abi action
+  void setglobal(uint64_t id, uint64_t val);
 
    struct transfer_args
    {
@@ -41,6 +45,24 @@ class staking : public eosio::contract
    };
 
  private:
+
+ enum stake_status : uint8_t
+  {
+    STAKING = 0, // in staking
+    REFUND = 1, // staker already claim fund back
+    DONE = 2, // enterprice already do counpon
+  };
+
+   //@abi table globals
+  struct global
+  {
+    uint64_t id;
+    uint64_t val;
+
+    uint64_t primary_key() const { return id; }
+  };
+  typedef eosio::multi_index<N(globals), global> globals_table;
+
 
    //@abi table enterprises
    struct enterprise
@@ -74,13 +96,13 @@ class staking : public eosio::contract
       eosio::asset coupon = eosio::asset(0, NOTHING_SYMBOL);
       eosio::time_point_sec start_at;
       eosio::time_point_sec end_at;
-      bool is_done;
+      uint8_t status = STAKING;
 
       uint64_t primary_key() const { return id; }
       uint64_t by_staker() const { return staker; }
       uint64_t by_enterprise() const { return enterprise; }
 
-      EOSLIB_SERIALIZE(staker_info, (id)(staker)(enterprise)(stake_num)(reward_etp)(coupon)(start_at)(end_at)(is_done))
+      EOSLIB_SERIALIZE(staker_info, (id)(staker)(enterprise)(stake_num)(reward_etp)(coupon)(start_at)(end_at)(status))
    };
 
    typedef eosio::multi_index<N(stakerinfos), staker_info,
@@ -108,4 +130,5 @@ class staking : public eosio::contract
    enterprises_table _enterprises;
    etp_offers_table _etp_offer;
    staker_infos_table _staker_infos;
+   globals_table _globals;
 };
