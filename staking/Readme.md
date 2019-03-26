@@ -19,6 +19,8 @@ https://api.eosdetroit.io:443
 
 ##### Set contract to guacamolenom account
 ````bash
+eosio-cpp -I include -o stakemine.wasm stakemine.cpp --abigen
+
 $ cleos -u https://api.eosdetroit.io:443 set contract guacamolenom ./staking/ -p guacamolenom
 ````
 

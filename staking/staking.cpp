@@ -182,6 +182,7 @@ void staking::setoffer(account_name owner, std::string offer_head, std::string o
             offer.min_stake = min_stake;
             offer.max_stake = max_stake;
             offer.duration_sec = duration_sec;
+            offer.coupon_quantity = coupon_quantity;
             offer.is_active = is_active;
         });
     }
@@ -240,9 +241,10 @@ void staking::claimrewards(account_name enterprise)
 
 void staking::refund(account_name staker, uint64_t staker_id)
 {
-    require_auth(staker);
-
     auto stake_info = _staker_infos.find(staker_id);
+
+    require_auth(stake_info->staker);
+
     eosio_assert(stake_info != _staker_infos.end(), "stake id does not exist");
     eosio_assert(stake_info->end_at <= eosio::time_point_sec(now()), "your stake is still in offer's duration");
     eosio_assert(stake_info->status == STAKING, "stake id out of STAKING state");
@@ -262,7 +264,7 @@ void staking::refund(account_name staker, uint64_t staker_id)
     eosio::action(
         eosio::permission_level{_self, N(active)},
         BEAN_TOKEN_CONTRACT, N(transfer),
-        std::make_tuple(_self, staker, stake_info->stake_num, std::string("Refund staked token from eos.cafe")))
+        std::make_tuple(_self, stake_info->staker, stake_info->stake_num, std::string("Refund staked token from eos.cafe")))
         .send();
 }
 
