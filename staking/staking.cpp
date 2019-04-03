@@ -241,30 +241,32 @@ void staking::claimrewards(account_name enterprise)
 
 void staking::refund(account_name staker, uint64_t staker_id)
 {
+    require_auth(staker);
     auto stake_info = _staker_infos.find(staker_id);
 
     require_auth(stake_info->staker);
 
     eosio_assert(stake_info != _staker_infos.end(), "stake id does not exist");
+    eosio_assert(staker == stake_info->staker, "Only staker can refund");
     eosio_assert(stake_info->end_at <= eosio::time_point_sec(now()), "your stake is still in offer's duration");
     eosio_assert(stake_info->status == STAKING, "stake id out of STAKING state");
 
     auto etp = _enterprises.find(stake_info->enterprise);
     eosio_assert((etp != _enterprises.end()) && (etp->is_approve == true), "enterprise does not exist");
 
-    _enterprises.modify(etp, _self, [&](auto &info) {
+    _enterprises.modify(etp, 0, [&](auto &info) {
         info.total_stake -= stake_info->stake_num;
         info.total_unpaid += stake_info->reward_etp;
     });
 
-    _staker_infos.modify(stake_info, _self, [&](auto &info) {
+    _staker_infos.modify(stake_info, 0, [&](auto &info) {
         info.status = REFUND;
     });
 
     eosio::action(
         eosio::permission_level{_self, N(active)},
         BEAN_TOKEN_CONTRACT, N(transfer),
-        std::make_tuple(_self, stake_info->staker, stake_info->stake_num, std::string("Refund staked token from eos.cafe")))
+        std::make_tuple(_self, staker, stake_info->stake_num, std::string("Refund staked token from eos.cafe")))
         .send();
 }
 
